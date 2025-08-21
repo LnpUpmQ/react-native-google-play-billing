@@ -74,14 +74,15 @@ repositories {
 }
 
 
+def billing_client_version = getExtOrDefault("billingClientVersion")
+
 dependencies {
   // For < 0.71, this will be from the local maven repo
   // For > 0.71, this will be replaced by `com.facebook.react:react-android:$version` by react gradle plugin
   //noinspection GradleDynamicVersion
   implementation "com.facebook.react:react-android:+"
 
-  def billing_version = "7.0.0"
-  implementation "com.android.billingclient:billing:$billing_version"
+  implementation "com.android.billingclient:billing:$billing_client_version"
 }
 
 if (isNewArchitectureEnabled()) {
