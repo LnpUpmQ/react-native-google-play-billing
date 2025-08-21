@@ -7,6 +7,7 @@ import com.android.billingclient.api.BillingClient;
 import com.android.billingclient.api.BillingClientStateListener;
 import com.android.billingclient.api.BillingFlowParams;
 import com.android.billingclient.api.BillingResult;
+import com.android.billingclient.api.PendingPurchasesParams;
 import com.android.billingclient.api.ProductDetails;
 import com.android.billingclient.api.Purchase;
 import com.android.billingclient.api.PurchasesResponseListener;
@@ -44,7 +45,11 @@ public class GooglePlayBillingModule extends GooglePlayBillingSpec implements Pu
     this.reactContext = reactContext;
 
     // 初始化 BillingClient
-    this.billingClient = BillingClient.newBuilder(reactContext).setListener(this).enablePendingPurchases().build();
+    this.billingClient = BillingClient.newBuilder(reactContext)
+      .setListener(this)
+      .enablePendingPurchases(PendingPurchasesParams.newBuilder().enableOneTimeProducts().enablePrepaidPlans().build())
+      .enableAutoServiceReconnection()
+      .build();
 
     GooglePlayBillingModule _thisModule = this;
     // 使用 PurchasesUpdatedListener 监听购买交易更新不足以确保您的应用会处理所有购买交易。有时您的应用可能不知道用户进行的部分购买交易。
@@ -194,7 +199,10 @@ public class GooglePlayBillingModule extends GooglePlayBillingSpec implements Pu
    */
   private void querySingleProductDetailsAsync(String productId, String productType, SingleProductDetailsResponseListener singleProductDetailsResponseListener) {
     QueryProductDetailsParams queryProductDetailsParams = QueryProductDetailsParams.newBuilder().setProductList(ImmutableList.of(QueryProductDetailsParams.Product.newBuilder().setProductId(productId).setProductType(productType).build())).build();
-    billingClient.queryProductDetailsAsync(queryProductDetailsParams, (billingResult, productDetailsList) -> singleProductDetailsResponseListener.onSingleProductDetailsResponse(billingResult, !productDetailsList.isEmpty() ? productDetailsList.get(0) : null));
+    billingClient.queryProductDetailsAsync(queryProductDetailsParams, (billingResult, queryProductDetailsResult) -> {
+      List<ProductDetails> productDetailsList = queryProductDetailsResult.getProductDetailsList();
+      singleProductDetailsResponseListener.onSingleProductDetailsResponse(billingResult, !productDetailsList.isEmpty() ? productDetailsList.get(0) : null);
+    });
   }
 
 
@@ -268,8 +276,9 @@ public class GooglePlayBillingModule extends GooglePlayBillingSpec implements Pu
         productList.add(QueryProductDetailsParams.Product.newBuilder().setProductId(productId).setProductType(String.valueOf(productType)).build());
       }
       QueryProductDetailsParams queryProductDetailsParams = QueryProductDetailsParams.newBuilder().setProductList(productList).build();
-      billingClient.queryProductDetailsAsync(queryProductDetailsParams, (billingResult, productDetailsList) -> {
+      billingClient.queryProductDetailsAsync(queryProductDetailsParams, (billingResult, queryProductDetailsResult) -> {
         if (billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK) {
+          List<ProductDetails> productDetailsList = queryProductDetailsResult.getProductDetailsList();
           WritableArray result = Arguments.createArray();
           for (int i = 0; i < productDetailsList.size(); i++) {
             ProductDetails productDetails = productDetailsList.get(i);
